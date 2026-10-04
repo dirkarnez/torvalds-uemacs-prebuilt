@@ -1,0 +1,94 @@
+name: cygwin-action-workflow
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'c*'
+      
+permissions:
+    contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ windows-latest ] # , ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    env:
+      targetName: uemacs
+      targetRef: master
+    defaults:
+      run:
+        shell: C:\tools\cygwin\bin\bash.exe --login -o igncr '{0}'
+    # env:
+    #   targetName: libgpg-error
+    #   installationPath: libgpg-error-installation
+    #   mingwTargetZip: libgpg-error-${{ github.ref_name }}-mingw64-x86_64-posix-seh-rev0-8.1.0.zip
+    steps:
+      #       targetRef: libgpg-error-1.47
+      # - name: git clone
+      #   shell: cmd
+      #   run: git clone --recurse-submodules https://dev.gnupg.org/source/libgpg-error.git && cd libgpg-error && git checkout ${{ env.targetRef }}
+      
+      - shell: cmd
+        run: git config --global core.autocrlf false
+      
+      - uses: actions/checkout@v6
+        with:
+          repository: torvalds/uemacs
+          ref: ${{ env.targetRef }}
+          path: ${{ env.targetName }}
+          submodules: true
+          fetch-depth: 0 # <-- clone with complete history
+          
+      - name: Set up Cygwin
+        uses: egor-tensin/setup-cygwin@v4
+        with:
+          packages: autoconf automake libtool gcc-g++ gcc-core make openssl libssl-devel cygwin-devel pkg-config openssl-devel
+    # 
+    #  LDFLAGS="-Wl,-no-undefined"
+      - run: |
+          echo $(pwd) && \
+          ls && \
+          cd '${{ github.workspace }}/${{ env.targetName }}' && \
+          ls && \
+          g++ --version && \
+          mkdir installation && \
+          export HOME="$(pwd)/installation" && \
+          make && \
+          make install
+
+      - shell: cmd
+        run: xcopy /H /Y /C "C:\tools\cygwin\bin\cygwin1.dll" "${{ env.targetName }}\installation\bin"
+
+      - shell: cmd
+        run: xcopy /H /Y /C "C:\tools\cygwin\bin\cygcrypto-3.dll" "${{ env.targetName }}\installation\bin"
+
+      - shell: cmd
+        run: xcopy /H /Y /C "C:\tools\cygwin\bin\cygz.dll" "${{ env.targetName }}\installation\bin"
+        
+      # - shell: cmd
+      #   run: xcopy /H /Y /C "${{ github.workspace }}\${{ env.targetName }}\examples\mic.exe" "${{ env.targetName }}\installation\bin"
+        
+      # - shell: cmd
+      #   run: xcopy /H /Y /C "${{ github.workspace }}\${{ env.targetName }}\examples\mis.exe" "${{ env.targetName }}\installation\bin"
+
+      - shell: cmd
+        run: |
+          cd "${{ env.targetName }}\installation" &&^
+          dir /S
+        
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: "${{ env.targetName }}/installation"
+          filename: "${{ env.targetName }}-${{ github.ref_name }}-cygwin.zip"
+        
+      - name: Release prebuilt
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "${{ env.targetName }}/installation/${{ env.targetName }}-${{ github.ref_name }}-cygwin.zip"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
