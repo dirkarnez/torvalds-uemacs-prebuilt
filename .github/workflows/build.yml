@@ -45,7 +45,7 @@ jobs:
       - name: Set up Cygwin
         uses: egor-tensin/setup-cygwin@v4
         with:
-          packages: autoconf automake libtool gcc-g++ gcc-core make openssl libssl-devel cygwin-devel pkg-config openssl-devel
+          packages: autoconf automake libtool gcc-g++ gcc-core make openssl libssl-devel cygwin-devel pkg-config openssl-devel ncurses
     # 
     #  LDFLAGS="-Wl,-no-undefined"
       - run: |
@@ -56,9 +56,11 @@ jobs:
           g++ --version && \
           mkdir installation && \
           export HOME="$(pwd)/installation" && \
+          sed -i "s/^CFLAGS.*$/CFLAGS=-std=c23 -O2 \$(WARNINGS)/g" ./Makefile && \
+          cat ./Makefile && \
           make && \
           make install
-
+          
       - shell: cmd
         run: xcopy /H /Y /C "C:\tools\cygwin\bin\cygwin1.dll" "${{ env.targetName }}\installation\bin"
 
