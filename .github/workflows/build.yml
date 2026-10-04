@@ -56,7 +56,7 @@ jobs:
           g++ --version && \
           mkdir installation && \
           export HOME="$(pwd)/installation" && \
-          sed -i "s/^CFLAGS.*$/CFLAGS=-std=c23 -O2 \$(WARNINGS)/g" ./Makefile && \
+          sed -i "s/^CFLAGS.*$/CFLAGS=-std=c23 -O2 -D_GNU_SOURCE \$(WARNINGS)/g" ./Makefile && \
           cat ./Makefile && \
           make && \
           make install
